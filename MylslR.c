@@ -20,10 +20,25 @@ char* timeToString(struct tm *t) {
 
   return s;
 }
+int total(){
+    DIR *ptr;
+    int sum= 0;
+    int Max= -1;
+    struct dirent *dir_ptr;
+    ptr = opendir(".");
+    while((dir_ptr = readdir(ptr)) !=NULL  ){
+        struct stat *file_info;
+        lstat(dir_ptr->d_name, file_info);
+        if(Max < file_info -> st_size) Max =file_info -> st_size;
+        sum += file_info -> st_blocks;
+    }
+    printf("total: %d\n",sum);
+    return Max;
+}
 
 
 
-int print_file(struct stat a,char *File_name){
+int print_file(struct stat a,char *File_name, int size){
     char sten[500];
     char abc[15];
     abc[0] = '\0';
@@ -87,29 +102,26 @@ int print_file(struct stat a,char *File_name){
     struct passwd *user_name;
     struct group *group_name;
 
+    
+    
+    
     if( (user_name = getpwuid(a.st_uid))){
         //uid has name
         if((group_name = getgrgid(a.st_gid))){//gid has name
-            printf("%s  %ld %s %s %lld %s %s",
+            printf("%s  %ld %s %s ",
             abc, 
-            (long) a.st_nlink, 
+            (long) a.st_nlink,
             &*user_name->pw_name,
-            &*group_name->gr_name,
-            (long long) a.st_size,
-            timeToString(localtime(&a.st_mtime)),
-            File_name
+            &*group_name->gr_name
             );
         }
         else{
             
-            printf("%s  %ld %s %ld %lld %s %s",
+            printf("%s  %ld %s %ld ",
             abc, 
             (long) a.st_nlink, 
             &*user_name->pw_name,
-            (long) a.st_gid,
-            (long long) a.st_size,
-            timeToString(localtime(&a.st_mtime)),
-            File_name
+            (long) a.st_gid
             );
 
         }
@@ -117,31 +129,44 @@ int print_file(struct stat a,char *File_name){
     }else{
         // uid has no name
         if((group_name = getgrgid(a.st_gid))){//gid has name
-            printf("%s  %ld %ld %s %lld %s %s",
+            printf("%s  %ld %ld %s ",
             abc, 
             (long) a.st_nlink, 
             (long) a.st_uid,
-            &*group_name->gr_name,
-            (long long) a.st_size,
-            timeToString(localtime(&a.st_mtime)),
-            File_name
+            &*group_name->gr_name
             );
 
         }
         else{
-            printf("%s  %ld %ld %ld %lld %s %s",
+            printf("%s  %ld %ld %ld ",
             abc, 
             (long) a.st_nlink, 
             (long) a.st_uid,
-            (long) a.st_gid,
+            (long) a.st_gid
+            );
+            
+        }
+        
+
+    }
+    int len = 0;
+    int size_t = a.st_size;
+    do{
+        size_t = (int)size_t/10;
+        len++;
+    }while(size_t > 0);
+    
+    int i;
+    for(i = 0; i< size-len; i++){
+        printf(" ");
+    }
+
+     printf("%lld %s %s",
             (long long) a.st_size,
             timeToString(localtime(&a.st_mtime)),
             File_name
             );
-            
-        }
 
-    }
     return flag;
     
 
@@ -167,7 +192,7 @@ void recursive(char * pathname, char *bef_path){
             return;
     }
  
-    
+    closedir(dir_ptr);
 
     // change working directory
 
@@ -176,20 +201,26 @@ void recursive(char * pathname, char *bef_path){
     struct stat a;
     int count; int idx; 
     if((count = scandir(".", &namelist, NULL, alphasort)) != -1) 
-    { 
+    {
         char temp[1024];
         temp[0] = '\0';
         strcat(temp,bef_path);
         strcat(temp,pathname);
         if(strcmp(temp,".")!=0) printf("\n%s:\n",temp); 
+        int max_size = 0;
+        max_size = total();
 
-
+        int len = 0;
+        do{
+            max_size = (int)max_size/10;
+            len++;
+        }while(max_size > 0);
         
         for(idx= 0; idx<count; idx++){
             if(!strcmp(namelist[idx]-> d_name ,".") || !strcmp(namelist[idx]->d_name , ".."))continue;
             lstat(namelist[idx]->d_name, &a);
     
-            if(print_file(a,namelist[idx]->d_name)==1){
+            if(print_file(a,namelist[idx]->d_name,len)==1){
                 char buf[1024];
     
                 int n = readlink(namelist[idx]-> d_name,buf,1024);
